@@ -514,8 +514,19 @@ export default function BriefForm() {
           background: rgba(13,8,32,0.85); backdrop-filter: blur(12px);
           border-bottom: 1px solid rgba(168,156,255,0.08);
         }
-        .logo-wrapper { display: inline-flex; align-items: center; justify-content: center; margin-bottom: 20px; }
-        .logo-img { width: 180px; height: auto; display: block; filter: drop-shadow(0 4px 28px rgba(168,156,255,0.4)); }
+        .logo-wrapper { display: inline-flex; align-items: center; justify-content: center; margin-bottom: 24px; }
+        .logo-img {
+          width: 260px;
+          height: auto;
+          display: block;
+          animation: logoFloat 6s ease-in-out infinite;
+          will-change: transform, filter;
+        }
+        @keyframes logoFloat {
+          0%   { transform: translateY(0px);   filter: drop-shadow(0 6px 32px rgba(168,156,255,0.35)); }
+          50%  { transform: translateY(-10px); filter: drop-shadow(0 18px 48px rgba(168,156,255,0.65)); }
+          100% { transform: translateY(0px);   filter: drop-shadow(0 6px 32px rgba(168,156,255,0.35)); }
+        }
         .form-title-main { font-size: 28px; font-weight: 800; color: #FFFFFF; margin-top: 16px; margin-bottom: 8px; letter-spacing: -0.5px; }
         .form-subtitle-main { font-size: 15px; color: #9B8FCC; max-width: 600px; margin: 0 auto; }
 
@@ -663,7 +674,7 @@ export default function BriefForm() {
         <div className="logo-wrapper">
           <img src={logo3B} alt="3B Studio" className="logo-img" />
         </div>
-        <h1 className="form-title-main">Brand Identity Design Brief</h1>
+        <h1 className="form-title-main">Branding Design Brief</h1>
         <p className="form-subtitle-main">Let's craft your identity into a consistent creative system. Progress systematically.</p>
 
         <div className="ribbon-container">

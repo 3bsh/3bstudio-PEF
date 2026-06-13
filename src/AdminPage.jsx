@@ -238,7 +238,16 @@ const adminCSS = `
     align-items: center; justify-content: center; padding: 40px 20px;
     position: relative; z-index: 1;
   }
-  .login-logo { width: 160px; margin-bottom: 36px; filter: drop-shadow(0 4px 20px rgba(168,156,255,0.35)); }
+  .login-logo {
+    width: 220px; margin-bottom: 36px;
+    animation: logoFloat 6s ease-in-out infinite;
+    will-change: transform, filter;
+  }
+  @keyframes logoFloat {
+    0%   { transform: translateY(0px);   filter: drop-shadow(0 6px 32px rgba(168,156,255,0.35)); }
+    50%  { transform: translateY(-10px); filter: drop-shadow(0 18px 48px rgba(168,156,255,0.65)); }
+    100% { transform: translateY(0px);   filter: drop-shadow(0 6px 32px rgba(168,156,255,0.35)); }
+  }
   .login-card {
     width: 100%; max-width: 400px;
     background: rgba(24,14,68,0.55); border: 1px solid rgba(168,156,255,0.1);
