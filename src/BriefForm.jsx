@@ -110,6 +110,7 @@ export default function BriefForm() {
   const [currentStep, setCurrentStep] = useState(0);
   const [toastState, setToastState] = useState({ show: false, type: 'success', msg: '' });
   const [sending, setSending] = useState(false);
+  const [submitted, setSubmitted] = useState(() => localStorage.getItem('brandBriefSubmitted_3b') === 'true');
 
   const [formData, setFormData] = useState({
     companyName: '', industry: '', description: '',
@@ -187,7 +188,6 @@ export default function BriefForm() {
     URL.revokeObjectURL(url);
 
     // 4. Send email via EmailJS (best-effort notification, in addition to the database)
-    let emailed = false;
     if (EMAILJS_SERVICE && EMAILJS_TEMPLATE && EMAILJS_KEY) {
       try {
         await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
@@ -198,19 +198,20 @@ export default function BriefForm() {
           brief_content: text,
           reply_to:      formData.contactEmail || '3bsssh@gmail.com',
         }, EMAILJS_KEY);
-        emailed = true;
       } catch {}
-    }
-
-    if (savedToDb) {
-      showToast('success', emailed ? 'Brief sent to 3B Studio & downloaded!' : 'Brief received by 3B Studio & downloaded!');
-    } else {
-      showToast('warn', 'Downloaded locally — could not reach the server. Please also send us the file by email.');
     }
 
     // 5. Reset draft
     localStorage.removeItem('brandBriefData_3b_v2');
     setSending(false);
+
+    if (savedToDb) {
+      // Lock the form so the same visitor can't submit repeatedly
+      localStorage.setItem('brandBriefSubmitted_3b', 'true');
+      setSubmitted(true);
+    } else {
+      showToast('warn', 'Downloaded locally — could not reach the server. Please try submitting again.');
+    }
   };
 
   const renderStep = () => {
@@ -482,6 +483,73 @@ export default function BriefForm() {
       default: return null;
     }
   };
+
+  if (submitted) {
+    return (
+      <div className="brand-brief-container thankyou-container">
+        <style>{`
+          @import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap');
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          .thankyou-container {
+            min-height: 100vh;
+            background: #0D0820;
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            color: #EDE9FF;
+            display: flex; align-items: center; justify-content: center;
+            padding: 24px; position: relative; overflow: hidden;
+          }
+          .thankyou-container::before {
+            content: ''; position: fixed; top: -10%; left: -10%;
+            width: 55vw; height: 55vw;
+            background-image: radial-gradient(circle, rgba(168,156,255,0.13) 0%, transparent 70%);
+            pointer-events: none; z-index: 0;
+          }
+          .thankyou-container::after {
+            content: ''; position: fixed; bottom: -10%; right: -10%;
+            width: 60vw; height: 60vw;
+            background-image: radial-gradient(circle, rgba(67,33,150,0.25) 0%, transparent 70%);
+            pointer-events: none; z-index: 0;
+          }
+          .thankyou-card {
+            position: relative; z-index: 1;
+            max-width: 520px; width: 100%; text-align: center;
+            background: rgba(24,14,68,0.45);
+            border: 1px solid rgba(168,156,255,0.08);
+            padding: 56px 40px; border-radius: 24px;
+            backdrop-filter: blur(20px); box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+          }
+          .thankyou-logo { width: 180px; margin-bottom: 32px; animation: logoFloat 6s ease-in-out infinite; }
+          @keyframes logoFloat {
+            0%   { transform: translateY(0px);   filter: drop-shadow(0 6px 32px rgba(168,156,255,0.35)); }
+            50%  { transform: translateY(-10px); filter: drop-shadow(0 18px 48px rgba(168,156,255,0.65)); }
+            100% { transform: translateY(0px);   filter: drop-shadow(0 6px 32px rgba(168,156,255,0.35)); }
+          }
+          .thankyou-icon {
+            width: 64px; height: 64px; border-radius: 50%; margin: 0 auto 24px;
+            background: linear-gradient(135deg, #A89CFF 0%, #432196 100%);
+            display: flex; align-items: center; justify-content: center; color: #FFF;
+            box-shadow: 0 4px 24px rgba(168,156,255,0.35);
+          }
+          .thankyou-card h1 { font-size: 26px; font-weight: 800; color: #FFF; margin-bottom: 12px; letter-spacing: -0.5px; }
+          .thankyou-card p { font-size: 14px; color: #9B8FCC; line-height: 1.7; margin-bottom: 8px; }
+          .thankyou-company { color: #C4B8FF; font-weight: 700; }
+          .thankyou-footer { margin-top: 32px; padding-top: 24px; border-top: 1px solid rgba(168,156,255,0.08); font-size: 12px; color: #6B5FA0; }
+        `}</style>
+        <div className="thankyou-card">
+          <img src={logo3B} alt="3B Studio" className="thankyou-logo" />
+          <div className="thankyou-icon"><Check size={30} /></div>
+          <h1>Thank You!</h1>
+          <p>
+            We've received the brand brief{formData.companyName ? <> for <span className="thankyou-company">{formData.companyName}</span></> : ''}.
+          </p>
+          <p>Our team will review it and get back to you shortly.</p>
+          <div className="thankyou-footer">
+            3B Studio | 3bsssh@gmail.com | +964 785 080 0280
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="brand-brief-container">
