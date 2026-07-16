@@ -97,18 +97,13 @@ Building brands as systems
   `.trim();
 }
 
-function saveSubmission(fd, text) {
-  const list = JSON.parse(localStorage.getItem('brandBriefSubmissions_3b') || '[]');
-  list.unshift({
-    id: Date.now().toString(),
-    submittedAt: new Date().toISOString(),
-    companyName: fd.companyName || 'Unnamed',
-    contactEmail: fd.contactEmail || '',
-    data: fd,
-    formatted: text,
-    viewed: false,
+async function saveSubmission(fd, text) {
+  const res = await fetch('/api/submit-brief', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ formData: fd, formatted: text }),
   });
-  localStorage.setItem('brandBriefSubmissions_3b', JSON.stringify(list));
+  if (!res.ok) throw new Error('Failed to save submission');
 }
 
 export default function BriefForm() {
@@ -172,8 +167,12 @@ export default function BriefForm() {
     setSending(true);
     const text = buildBriefText(formData);
 
-    // 1. Save locally
-    saveSubmission(formData, text);
+    // 1. Save to the studio's database (shows up in the Admin Dashboard)
+    let savedToDb = false;
+    try {
+      await saveSubmission(formData, text);
+      savedToDb = true;
+    } catch {}
 
     // 2. Copy to clipboard
     try { await navigator.clipboard.writeText(text); } catch {}
@@ -187,7 +186,8 @@ export default function BriefForm() {
     a.click();
     URL.revokeObjectURL(url);
 
-    // 4. Send email via EmailJS
+    // 4. Send email via EmailJS (best-effort notification, in addition to the database)
+    let emailed = false;
     if (EMAILJS_SERVICE && EMAILJS_TEMPLATE && EMAILJS_KEY) {
       try {
         await emailjs.send(EMAILJS_SERVICE, EMAILJS_TEMPLATE, {
@@ -198,12 +198,14 @@ export default function BriefForm() {
           brief_content: text,
           reply_to:      formData.contactEmail || '3bsssh@gmail.com',
         }, EMAILJS_KEY);
-        showToast('success', 'Brief sent to 3B Studio & downloaded!');
-      } catch {
-        showToast('warn', 'Downloaded locally — email delivery failed.');
-      }
+        emailed = true;
+      } catch {}
+    }
+
+    if (savedToDb) {
+      showToast('success', emailed ? 'Brief sent to 3B Studio & downloaded!' : 'Brief received by 3B Studio & downloaded!');
     } else {
-      showToast('success', 'Brief copied & downloaded!');
+      showToast('warn', 'Downloaded locally — could not reach the server. Please also send us the file by email.');
     }
 
     // 5. Reset draft
