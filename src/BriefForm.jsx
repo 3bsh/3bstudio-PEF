@@ -106,13 +106,8 @@ async function saveSubmission(fd, text) {
   if (!res.ok) throw new Error('Failed to save submission');
 }
 
-export default function BriefForm() {
-  const [currentStep, setCurrentStep] = useState(0);
-  const [toastState, setToastState] = useState({ show: false, type: 'success', msg: '' });
-  const [sending, setSending] = useState(false);
-  const [submitted, setSubmitted] = useState(() => localStorage.getItem('brandBriefSubmitted_3b') === 'true');
-
-  const [formData, setFormData] = useState({
+function getInitialFormData() {
+  return {
     companyName: '', industry: '', description: '',
     contactName: '', contactEmail: '', contactPhone: '',
     vision: '', mission: '', coreValues: ['', '', '', ''],
@@ -128,7 +123,16 @@ export default function BriefForm() {
       patches: false, website: false, packaging: false, signage: false, other: ''
     },
     goals: '', timeline: '', budget: '', additionalNotes: ''
-  });
+  };
+}
+
+export default function BriefForm() {
+  const [currentStep, setCurrentStep] = useState(0);
+  const [toastState, setToastState] = useState({ show: false, type: 'success', msg: '' });
+  const [sending, setSending] = useState(false);
+  const [submitted, setSubmitted] = useState(() => localStorage.getItem('brandBriefSubmitted_3b') === 'true');
+
+  const [formData, setFormData] = useState(getInitialFormData);
 
   const steps = [
     { title: 'Basic Info',   icon: <Building    size={16} /> },
@@ -158,6 +162,14 @@ export default function BriefForm() {
 
   const nextStep = () => { if (currentStep < steps.length - 1) { setCurrentStep(s => s + 1); window.scrollTo({ top: 0, behavior: 'smooth' }); } };
   const prevStep = () => { if (currentStep > 0) { setCurrentStep(s => s - 1); window.scrollTo({ top: 0, behavior: 'smooth' }); } };
+
+  const backToHome = () => {
+    localStorage.removeItem('brandBriefSubmitted_3b');
+    setFormData(getInitialFormData());
+    setCurrentStep(0);
+    setSubmitted(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
 
   const showToast = (type, msg) => {
     setToastState({ show: true, type, msg });
@@ -533,6 +545,13 @@ export default function BriefForm() {
           .thankyou-card h1 { font-size: 26px; font-weight: 800; color: #FFF; margin-bottom: 12px; letter-spacing: -0.5px; }
           .thankyou-card p { font-size: 14px; color: #9B8FCC; line-height: 1.7; margin-bottom: 8px; }
           .thankyou-company { color: #C4B8FF; font-weight: 700; }
+          .thankyou-btn {
+            margin-top: 28px; padding: 14px 32px; border: none; border-radius: 12px;
+            font-family: inherit; font-size: 14px; font-weight: 700; color: #FFF; cursor: pointer;
+            background: linear-gradient(135deg, #432196 0%, #5B35B8 100%);
+            box-shadow: 0 4px 20px rgba(67,33,150,0.4); transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+          }
+          .thankyou-btn:hover { transform: translateY(-1px); box-shadow: 0 6px 28px rgba(67,33,150,0.55); }
           .thankyou-footer { margin-top: 32px; padding-top: 24px; border-top: 1px solid rgba(168,156,255,0.08); font-size: 12px; color: #6B5FA0; }
         `}</style>
         <div className="thankyou-card">
@@ -543,6 +562,9 @@ export default function BriefForm() {
             We've received the brand brief{formData.companyName ? <> for <span className="thankyou-company">{formData.companyName}</span></> : ''}.
           </p>
           <p>Our team will review it and get back to you shortly.</p>
+          <button type="button" className="thankyou-btn" onClick={backToHome}>
+            Back to Home
+          </button>
           <div className="thankyou-footer">
             3B Studio | 3bsssh@gmail.com | +964 785 080 0280
           </div>
