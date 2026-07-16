@@ -1,8 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState } from 'react';
 import logo3B from './assets/logo.svg';
-import { LogOut, Download, Trash2, Eye, EyeOff, ChevronDown, ChevronUp, Inbox, Shield } from 'lucide-react';
-
-const ADMIN_PW = import.meta.env.VITE_ADMIN_PASSWORD || '3Bstudio@2024';
+import { LogOut, Download, Trash2, Eye, EyeOff, ChevronDown, ChevronUp, Inbox, Shield, Loader2 } from 'lucide-react';
 
 function formatDate(iso) {
   return new Date(iso).toLocaleString('en-GB', {
@@ -19,41 +17,66 @@ export default function AdminPage() {
   const [submissions, setSubmissions] = useState([]);
   const [expandedId,  setExpandedId]  = useState(null);
   const [filter,      setFilter]      = useState('all'); // all | new | viewed
+  const [loading,     setLoading]     = useState(false);
+  const [loggingIn,   setLoggingIn]   = useState(false);
 
-  useEffect(() => {
-    if (authed) loadData();
-  }, [authed]);
+  const authHeaders = (password) => ({ 'Content-Type': 'application/json', 'x-admin-password': password });
 
-  const loadData = () => {
+  const loadData = async (password) => {
+    setLoading(true);
     try {
-      const data = JSON.parse(localStorage.getItem('brandBriefSubmissions_3b') || '[]');
-      setSubmissions(data);
-    } catch { setSubmissions([]); }
+      const res = await fetch('/api/submissions', { headers: authHeaders(password) });
+      if (res.ok) setSubmissions(await res.json());
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const persist = (list) => {
-    setSubmissions(list);
-    localStorage.setItem('brandBriefSubmissions_3b', JSON.stringify(list));
-  };
-
-  const handleLogin = (e) => {
+  const handleLogin = async (e) => {
     e.preventDefault();
-    if (pw === ADMIN_PW) { setAuthed(true); setPwError(''); }
-    else { setPwError('Incorrect password.'); setPw(''); }
+    setLoggingIn(true);
+    setPwError('');
+    try {
+      const res = await fetch('/api/submissions', { headers: authHeaders(pw) });
+      if (res.ok) {
+        setSubmissions(await res.json());
+        setAuthed(true);
+      } else {
+        setPwError('Incorrect password.');
+        setPw('');
+      }
+    } catch {
+      setPwError('Could not reach the server. Try again.');
+    } finally {
+      setLoggingIn(false);
+    }
   };
 
-  const toggleExpand = (id) => {
+  const toggleExpand = async (id) => {
     const sub = submissions.find(s => s.id === id);
     if (sub && !sub.viewed) {
-      persist(submissions.map(s => s.id === id ? { ...s, viewed: true } : s));
+      setSubmissions(list => list.map(s => s.id === id ? { ...s, viewed: true } : s));
+      try {
+        await fetch('/api/submissions', {
+          method: 'PATCH',
+          headers: authHeaders(pw),
+          body: JSON.stringify({ id, viewed: true }),
+        });
+      } catch {}
     }
     setExpandedId(prev => prev === id ? null : id);
   };
 
-  const deleteItem = (id) => {
+  const deleteItem = async (id) => {
     if (!window.confirm('Delete this brief permanently?')) return;
-    persist(submissions.filter(s => s.id !== id));
+    setSubmissions(list => list.filter(s => s.id !== id));
     if (expandedId === id) setExpandedId(null);
+    try {
+      await fetch(`/api/submissions?id=${encodeURIComponent(id)}`, {
+        method: 'DELETE',
+        headers: authHeaders(pw),
+      });
+    } catch {}
   };
 
   const download = (sub) => {
@@ -66,8 +89,16 @@ export default function AdminPage() {
     URL.revokeObjectURL(url);
   };
 
-  const markAllViewed = () => {
-    persist(submissions.map(s => ({ ...s, viewed: true })));
+  const markAllViewed = async () => {
+    const unread = submissions.filter(s => !s.viewed);
+    setSubmissions(list => list.map(s => ({ ...s, viewed: true })));
+    try {
+      await Promise.all(unread.map(s => fetch('/api/submissions', {
+        method: 'PATCH',
+        headers: authHeaders(pw),
+        body: JSON.stringify({ id: s.id, viewed: true }),
+      })));
+    } catch {}
   };
 
   const filtered = submissions.filter(s =>
@@ -102,7 +133,9 @@ export default function AdminPage() {
               </button>
             </div>
             {pwError && <p className="pw-error">{pwError}</p>}
-            <button type="submit" className="btn-login">Enter Dashboard</button>
+            <button type="submit" className="btn-login" disabled={loggingIn}>
+              {loggingIn ? 'Checking...' : 'Enter Dashboard'}
+            </button>
           </form>
         </div>
       </div>
@@ -119,6 +152,9 @@ export default function AdminPage() {
         <img src={logo3B} alt="3B Studio" className="admin-logo" />
         <div className="header-right">
           {newCount > 0 && <span className="badge">{newCount} new</span>}
+          <button className="btn-ghost" onClick={() => loadData(pw)} disabled={loading}>
+            <Loader2 size={16} className={loading ? 'spin' : ''} /> {loading ? 'Refreshing...' : 'Refresh'}
+          </button>
           <button className="btn-ghost" onClick={() => setAuthed(false)}>
             <LogOut size={16} /> Sign out
           </button>
@@ -307,6 +343,9 @@ const adminCSS = `
     padding: 8px 16px; border-radius: 10px; cursor: pointer; transition: all 0.2s;
   }
   .btn-ghost:hover { color: #FFF; background: rgba(168,156,255,0.12); }
+  .btn-ghost:disabled { opacity: 0.6; cursor: not-allowed; }
+  .spin { animation: spin 0.8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
 
   .admin-body { max-width: 900px; margin: 0 auto; padding: 40px 24px 100px; position: relative; z-index: 1; }
 
